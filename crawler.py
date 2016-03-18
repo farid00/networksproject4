@@ -2,25 +2,38 @@
 import sys 
 import socket
 import textwrap
+from urlparse import urlparse
 from HTMLParser import HTMLParser
 #Parse out links from HTTP response
+
+# these can probably be sets
+LinksToVisit = []
+LinksVisitted =[]
+
 class linkParser(HTMLParser):
 	def handle_starttag(self, tag, attrs):
-		link_list = []
-		if tag == "a":
-			for name, value in attrs:
-				if name == "href":
-					print value
-					link_list.append(value)
-#Parse out the cookies from the HTTP response
+		if tag == 'a':
+			for attr, value in attrs:
+				if attr == 'href':
+					url = urlparse(value)
+					# domain in case its an absolute url thats probably still fine
+					if not url.scheme or url.scheme == domain:
+						if value not in LinksVisitted and value not in LinksToVisit:
+							LinksToVisit.append(value)
 
+	def handle_data(self, data):
+            # <h2 class='secret_flag' style="color:red">FLAG: 64-characters-of-random-alphanumerics</h2>
+            if 'FLAG:' in data:
+                print data.split("FLAG: ",1)[1]
+            # it may be better to only do the check in an h2 tag but handle_starttag doesnt have any data in it so idk
+
+#Parse out the cookies from the HTTP response
 def compile_response(response):
 	if response.find('chunked'):
 		for item in response.split('\n'):
 			if str(item).isdigit():
 				print item
 		
-
 
 def parse_cookies(response):
 	cookie_dictionary = {}
@@ -45,13 +58,14 @@ def make_login_string(cookie_string, csrfmiddlewaretoken):
 					Content-Type: application/x-www-form-urlencoded
 					Content-Length: 95
 					Origin: http://fring.ccs.neu.edu
-					Cookie: %s 
+					Cookie: {} 
 
-					username=%s&password=%s&csrfmiddlewaretoken=%s&next=
+					username={}&password={}&csrfmiddlewaretoken={}&next=
 
 					"""
-	print textwrap.dedent(login_string % (cookie_string, username, password, csrfmiddlewaretoken))
-	return textwrap.dedent(login_string % (cookie_string, username, password, csrfmiddlewaretoken))
+	print textwrap.dedent(login_string.format(cookie_string, username, password, csrfmiddlewaretoken))
+	return textwrap.dedent(login_string.format(cookie_string, username, password, csrfmiddlewaretoken))
+
 def connect():
 	s = socket.socket()
 	s.connect(("fring.ccs.neu.edu", 80))
@@ -68,31 +82,31 @@ def make_cookie_string(cookie_dictionary):
 
 
 
-def make_get_request(cookie_string, url_to_get, dum):
+def make_get_request(cookie_string, url_to_get, sock):
 	request_string = """
 					GET /fakebook/ HTTP/1.1
 					Host: fring.ccs.neu.edu
 					Pragma: no-cache
 					Cache-Control: no-cache
-					Cookie: %s
+					Cookie: {}
 
 					"""
-	request_string = textwrap.dedent(request_string % (cookie_string))
+	request_string = textwrap.dedent(request_string.format(cookie_string))
 	print request_string
-	dum.sendall(request_string)
-	response = dum.recv(10000)
+	sock.sendall(request_string)
+	response = sock.recv(10000)
 	print response
-	# print response
+
 
 def main():
 	parser = linkParser()
+
 	s = connect()
 	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
 	response = s.recv(10000)
 	compile_response(response)
 	cookies = parse_cookies(response)
-	links = parser.feed(response)
 	cookie_string = make_cookie_string(cookies)
 	login_string = make_login_string(cookie_string, cookies['csrftoken'])
 	s.send(login_string)
