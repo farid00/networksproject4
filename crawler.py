@@ -17,7 +17,7 @@ class linkParser(HTMLParser):
 				if attr == 'href':
 					url = urlparse(value)
 					# domain in case its an absolute url thats probably still fine
-					if not url.scheme or url.scheme == domain:
+					if not url.scheme or url.scheme == 'http://fring.ccs.neu.edu/':
 						if value not in LinksVisitted and value not in LinksToVisit:
 							LinksToVisit.append(value)
 
@@ -46,6 +46,7 @@ def parse_cookies(response):
 			cookie_value = cookie[1]
 			cookie_dictionary[cookie_name] = cookie_value
 			print cookie
+
 	return cookie_dictionary
 
 def make_login_string(cookie_string, csrfmiddlewaretoken):
@@ -67,8 +68,9 @@ def make_login_string(cookie_string, csrfmiddlewaretoken):
 					username={}&password={}&csrfmiddlewaretoken={}&next=
 
 					"""
-	print textwrap.dedent(login_string.format(cookie_string, username, password, csrfmiddlewaretoken))
-	return textwrap.dedent(login_string.format(cookie_string, username, password, csrfmiddlewaretoken))
+
+	login_string = login_string.format(cookie_string, username, password, csrfmiddlewaretoken)
+	return textwrap.dedent(login_string)
 
 def connect():
 	s = socket.socket()
@@ -82,8 +84,8 @@ def make_cookie_string(cookie_dictionary):
 		current_str = "%s=%s; "
 		current_str = current_str % (key, value)
 		myCS += current_str
-	return myCS[:-1]
 
+	return myCS[:-1]
 
 
 def make_get_request(url_to_get, cookie_string, sock):
@@ -97,7 +99,9 @@ def make_get_request(url_to_get, cookie_string, sock):
 					"""
 	request_string = textwrap.dedent(request_string.format(url_to_get, cookie_string))
 	sock.sendall(request_string)
+
 	response = sock.recv(10000)
+	return response
 
 
 def main():
@@ -115,11 +119,10 @@ def main():
 	s.send(login_string)
 	response = s.recv(10000)
 
-	print response
-
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	resp = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
+	parser.feed(resp)
 	print resp
 
 
@@ -136,7 +139,7 @@ def main():
 
         #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
 		http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s);
-		print http_response
+		# print http_response
 		LinksVisitted.append(NextUrl)
 
 		parser.feed(http_response)
