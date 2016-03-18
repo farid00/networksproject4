@@ -73,11 +73,6 @@ def make_login_string(cookie_string, csrfmiddlewaretoken):
 	login_string = login_string.format(cookie_string, username, password, csrfmiddlewaretoken)
 	return textwrap.dedent(login_string)
 
-def connect():
-	s = socket.socket()
-	s.connect(("fring.ccs.neu.edu", 80))
-	return s 
-
 
 def make_cookie_string(cookie_dictionary):
 	myCS = ""
@@ -107,7 +102,8 @@ def make_get_request(url_to_get, cookie_string, sock):
 
 def main():
 	parser = linkParser()
-	s = connect()
+	s = socket.socket()
+	s.connect(("fring.ccs.neu.edu", 80))
 
 	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
@@ -146,8 +142,12 @@ def main():
 		parser.feed(http_response)
 		LinksToVisit.pop(0)
 
-	print 'FLAGS:'
-	print FLAGS
+	if FLAGS:
+		print "FLAGS:"
+		for flag in FLAGS:
+			print flag
+	else:
+		print 'NO FLAGS FOUND'
 
 
 if __name__ == "__main__":
