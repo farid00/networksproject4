@@ -49,6 +49,10 @@ def parse_cookies(response):
 	return cookie_dictionary
 
 def make_login_string(cookie_string, csrfmiddlewaretoken):
+	# Isaac's credentials 
+	# UN: 001939560
+	# PW: 66H5YT05
+
 	username = "001968841"
 	password = "LG56YYQK"
 	login_string = """
@@ -82,7 +86,7 @@ def make_cookie_string(cookie_dictionary):
 
 
 
-def make_get_request(cookie_string, url_to_get, sock):
+def make_get_request(url_to_get, cookie_string, sock):
 	request_string = """
 					GET /fakebook/ HTTP/1.1
 					Host: fring.ccs.neu.edu
@@ -92,10 +96,8 @@ def make_get_request(cookie_string, url_to_get, sock):
 
 					"""
 	request_string = textwrap.dedent(request_string.format(cookie_string))
-	print request_string
 	sock.sendall(request_string)
 	response = sock.recv(10000)
-	print response
 
 
 def main():
@@ -104,17 +106,23 @@ def main():
 	s = connect()
 	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
+	print '111111111'
 	response = s.recv(10000)
 	compile_response(response)
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	login_string = make_login_string(cookie_string, cookies['csrftoken'])
+	print '$$$$$$$$'
+	print login_string
 	s.send(login_string)
+	print '22222222'
 	response = s.recv(10000)
+
 	print response
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
-	make_get_request(cookie_string, '/fakebook/', s)
+	resp = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
+	print resp
 
 if __name__ == "__main__":
 	main()
