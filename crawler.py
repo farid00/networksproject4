@@ -21,13 +21,14 @@ class linkParser(HTMLParser):
 				if attr == 'href':
 					url = urlparse(value)
 					# domain in case its an absolute url thats probably still fine
-					if not url.scheme or url.scheme == 'http://fring.ccs.neu.edu/':
+					if not url.scheme or url.scheme == 'fring.ccs.neu.edu':
 						if value not in LinksVisitted and value not in LinksToVisit:
 							LinksToVisit.append(value)
 
 	def handle_data(self, data):
             # <h2 class='secret_flag' style="color:red">FLAG: 64-characters-of-random-alphanumerics</h2>
-            if 'FLAG:' in data:
+            if 'FLAG' in data:
+            	print "!!!!!!!!!!!!!!"
                 FLAGS.append(data.split("FLAG: ",1)[1])
             # it may be better to only do the check in an h2 tag but handle_starttag doesnt have any data in it so idk
 
@@ -40,7 +41,7 @@ def recvall(length_left, my_socket):
 			new_response = my_socket.recv(length_left)
 			length_left = length_left - len(new_response)
 			print str(len(new_response)) + ' new length'
-			print str(length_left) + 'length left'
+			print str(length_left) + ' length left'
 			response += new_response
 		else:
 			return response
@@ -138,7 +139,38 @@ def make_get_request(url_to_get, cookie_string, sock):
 	sock.sendall(request_string)
 
 	response = sock.recv(4096)
+	# if not response:
+	# 	print "WTF IS GOING ON"
+	# 	return
+		
+
+	# response_code = response.split()[1]
+	response = compile_response(response, sock)
 	return response
+
+def get_status_code(response):
+	return response.split()[1]
+
+def handle_response(response):
+	statuscode = response.split()[1]
+	print statuscode
+
+	if statuscode in range (0, 200):
+		# informational
+		pass
+	elif statuscode in range(200, 300):
+		# success
+		pass
+	elif statuscode in range(300,400):
+		# Redirection
+		pass
+	elif statuscode in range(400, 500):
+		# Client Error
+		pass
+	elif statuscode in range(500,600):
+		# Server Error
+		print '##########'
+
 
 
 def main():
@@ -146,7 +178,7 @@ def main():
 	s = socket.socket()
 	s.connect(("fring.ccs.neu.edu", 80))
 
-	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
+	home_page = "GET /accounts/login/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
 	response = s.recv(4096)
 	response = compile_response(response, s)
@@ -159,7 +191,6 @@ def main():
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	resp = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
-	resp = compile_response(resp, s)
 	parser.feed(resp)
 
 
@@ -170,18 +201,27 @@ def main():
 	while LinksToVisit:
 		NextUrl = LinksToVisit[0]
 		print NextUrl
-        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-        # s.connect((domain, 80))
-        # s.sendall("GET {} HTTP/1.1\r\nHost: {} \r\n\r\n".format(NextUrl, domain))
 
         #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
-		http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s);
-		http_response = compile_response(http_response, s)
+		http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s)
+		sc = get_status_code(http_response)
+		handle_response(http_response)
+		print http_response
+
+		while sc == '500':
+			print '###########'
+
+			http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s)
+			sc = get_status_code(http_response)
+			handle_response(http_response)
+
 		# print http_response
 		LinksVisitted.append(NextUrl)
-
-		parser.feed(http_response)
 		LinksToVisit.pop(0)
+
+		if http_response:
+			parser.feed(http_response)
+		
 
 	if FLAGS:
 		print "FLAGS:"
