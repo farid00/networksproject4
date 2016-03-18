@@ -4,6 +4,9 @@ import socket
 import textwrap
 from urlparse import urlparse
 from HTMLParser import HTMLParser
+import re
+import time
+import binascii
 #Parse out links from HTTP response
 
 # these can probably be sets
@@ -29,11 +32,50 @@ class linkParser(HTMLParser):
             # it may be better to only do the check in an h2 tag but handle_starttag doesnt have any data in it so idk
 
 #Parse out the cookies from the HTTP response
-def compile_response(response):
-	if response.find('chunked'):
-		for item in response.split('\n'):
-			if str(item).isdigit():
-				print item
+def recvall(length_left, my_socket):
+	length_left = length_left
+	response = ""
+	while True:
+		if length_left > 0:
+			new_response = my_socket.recv(length_left)
+			length_left = length_left - len(new_response)
+			print str(len(new_response)) + ' new length'
+			print str(length_left) + 'length left'
+			response += new_response
+		else:
+			return response
+
+def compile_response(response, s):
+	if response.find('chunked') > 0:
+		print response
+		current_response = response
+		reassembled_response = ""
+		while True:
+			#is this the first packet?
+			if current_response.find('Content-Type') > 0:
+				m = re.search(r"(?<=\r\n\r\n)[0-9A-Fa-f]*(?=\r\n)", current_response)
+			else:
+				print repr(current_response)
+				m = re.search(r"[0-9A-Fa-f]*(?=\r\n)", current_response)
+			if int(m.group(0), 16) == 0:
+				return reassembled_response
+			#add 2 because of the final carriage return and line return on chunk
+			chunk_length = int(m.group(0), 16) + 2
+			#split on the clrf number
+			body_response = response.split(m.group(0) + '\r\n')[1]
+			length_left = chunk_length - len(body_response)
+			new_response = recvall(length_left, s)
+			body_response += new_response
+
+			reassembled_response += body_response
+			current_response = s.recv(4096)
+	else:
+		response = response
+		total_length = re.search(r"(?<=Content-Length: )\d+", response)
+		body_response = re.search(r"(?<=\r\n\r\n).*", response, re.DOTALL)
+		length_left = int(total_length.group(0)) - int(len(body_response.group(0)))
+		response += recvall(length_left, s)
+		return response
 		
 
 def parse_cookies(response):
@@ -46,7 +88,6 @@ def parse_cookies(response):
 			cookie_name = cookie[0]
 			cookie_value = cookie[1]
 			cookie_dictionary[cookie_name] = cookie_value
-			print cookie
 
 	return cookie_dictionary
 
@@ -96,7 +137,7 @@ def make_get_request(url_to_get, cookie_string, sock):
 	request_string = textwrap.dedent(request_string.format(url_to_get, cookie_string))
 	sock.sendall(request_string)
 
-	response = sock.recv(10000)
+	response = sock.recv(4096)
 	return response
 
 
@@ -107,20 +148,19 @@ def main():
 
 	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
-	response = s.recv(10000)
-
-	compile_response(response)
+	response = s.recv(4096)
+	response = compile_response(response, s)
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	login_string = make_login_string(cookie_string, cookies['csrftoken'])
 	s.send(login_string)
-	response = s.recv(10000)
-
+	response = s.recv(4096)
+	compile_response(response, s)
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	resp = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
+	resp = compile_response(resp, s)
 	parser.feed(resp)
-	print resp
 
 
 
@@ -136,6 +176,7 @@ def main():
 
         #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
 		http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s);
+		http_response = compile_response(http_response, s)
 		# print http_response
 		LinksVisitted.append(NextUrl)
 
