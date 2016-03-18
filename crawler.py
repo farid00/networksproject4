@@ -88,38 +88,61 @@ def make_cookie_string(cookie_dictionary):
 
 def make_get_request(url_to_get, cookie_string, sock):
 	request_string = """
-					GET /fakebook/ HTTP/1.1
+					GET {} HTTP/1.1
 					Host: fring.ccs.neu.edu
 					Pragma: no-cache
 					Cache-Control: no-cache
 					Cookie: {}
 
 					"""
-	request_string = textwrap.dedent(request_string.format(cookie_string))
+	request_string = textwrap.dedent(request_string.format(url_to_get, cookie_string))
 	sock.sendall(request_string)
 	response = sock.recv(10000)
 
 
 def main():
 	parser = linkParser()
-
 	s = connect()
+
 	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
 	response = s.recv(10000)
+
 	compile_response(response)
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	login_string = make_login_string(cookie_string, cookies['csrftoken'])
-	print login_string
 	s.send(login_string)
 	response = s.recv(10000)
 
+	print cookies
 	print response
+
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	resp = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
 	print resp
+
+
+	if not LinksToVisit:
+		print 'NO LINKS AT START COULD NOT CRAWL'
+
+	while LinksToVisit:
+		NextUrl = LinksToVisit[0]
+		print NextUrl
+        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
+        # s.connect((domain, 80))
+        # s.sendall("GET {} HTTP/1.1\r\nHost: {} \r\n\r\n".format(NextUrl, domain))
+
+        #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
+		make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s);
+		http_response = s.recv(4096)
+		print http_response
+		LinksVisitted.append(NextUrl)
+
+		parser.feed(http_response)
+		LinksToVisit.pop(0)
+
 
 if __name__ == "__main__":
 	main()
