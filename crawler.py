@@ -13,6 +13,15 @@ class linkParser(HTMLParser):
 					print value
 					link_list.append(value)
 #Parse out the cookies from the HTTP response
+
+def compile_response(response):
+	if response.find('chunked'):
+		for item in response.split('\n'):
+			if str(item).isdigit():
+				print item
+		
+
+
 def parse_cookies(response):
 	cookie_dictionary = {}
 	for item in response.split("\n"):
@@ -34,7 +43,7 @@ def make_login_string(cookie_string, csrfmiddlewaretoken):
 					Host: fring.ccs.neu.edu
 					Referer: http://fring.ccs.neu.edu/accounts/login/?next=/fakebook/b
 					Content-Type: application/x-www-form-urlencoded
-					Content-Length: 91
+					Content-Length: 95
 					Origin: http://fring.ccs.neu.edu
 					Cookie: %s 
 
@@ -57,36 +66,41 @@ def make_cookie_string(cookie_dictionary):
 		myCS += current_str
 	return myCS[:-1]
 
-def make_get_request(cookie_string, url_to_get, socket):
+
+
+def make_get_request(cookie_string, url_to_get, dum):
 	request_string = """
 					GET /fakebook/ HTTP/1.1
 					Host: fring.ccs.neu.edu
+					Pragma: no-cache
+					Cache-Control: no-cache
 					Cookie: %s
 
 					"""
 	request_string = textwrap.dedent(request_string % (cookie_string))
 	print request_string
-	socket.sendall(request_string)
-	response = socket.recv(4096)
-	return response
+	dum.sendall(request_string)
+	response = dum.recv(10000)
+	print response
+	# print response
 
 def main():
 	parser = linkParser()
 	s = connect()
 	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
-	response = s.recv(4096)
-	print response
+	response = s.recv(10000)
+	compile_response(response)
 	cookies = parse_cookies(response)
 	links = parser.feed(response)
 	cookie_string = make_cookie_string(cookies)
 	login_string = make_login_string(cookie_string, cookies['csrftoken'])
 	s.send(login_string)
-	response = s.recv(4096)
+	response = s.recv(10000)
 	print response
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
-	print make_get_request(cookie_string, '/fakebook/', s)
+	make_get_request(cookie_string, '/fakebook/', s)
 
 if __name__ == "__main__":
 	main()
