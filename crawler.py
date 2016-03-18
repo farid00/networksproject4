@@ -9,6 +9,7 @@ from HTMLParser import HTMLParser
 # these can probably be sets
 LinksToVisit = []
 LinksVisitted =[]
+FLAGS = []
 
 class linkParser(HTMLParser):
 	def handle_starttag(self, tag, attrs):
@@ -24,7 +25,7 @@ class linkParser(HTMLParser):
 	def handle_data(self, data):
             # <h2 class='secret_flag' style="color:red">FLAG: 64-characters-of-random-alphanumerics</h2>
             if 'FLAG:' in data:
-                print data.split("FLAG: ",1)[1]
+                FLAGS.append(data.split("FLAG: ",1)[1])
             # it may be better to only do the check in an h2 tag but handle_starttag doesnt have any data in it so idk
 
 #Parse out the cookies from the HTTP response
@@ -144,6 +145,9 @@ def main():
 
 		parser.feed(http_response)
 		LinksToVisit.pop(0)
+
+	print 'FLAGS:'
+	print FLAGS
 
 
 if __name__ == "__main__":
