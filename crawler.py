@@ -115,13 +115,13 @@ def main():
 	s.send(login_string)
 	response = s.recv(10000)
 
-	print cookies
 	print response
 
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	resp = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
 	print resp
+
 
 
 	if not LinksToVisit:
@@ -135,8 +135,7 @@ def main():
         # s.sendall("GET {} HTTP/1.1\r\nHost: {} \r\n\r\n".format(NextUrl, domain))
 
         #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
-		make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s);
-		http_response = s.recv(4096)
+		http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s);
 		print http_response
 		LinksVisitted.append(NextUrl)
 
