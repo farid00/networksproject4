@@ -106,16 +106,13 @@ def main():
 	s = connect()
 	home_page = "GET /accounts/login/?next=/fakebook/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
 	s.send(home_page)
-	print '111111111'
 	response = s.recv(10000)
 	compile_response(response)
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
 	login_string = make_login_string(cookie_string, cookies['csrftoken'])
-	print '$$$$$$$$'
 	print login_string
 	s.send(login_string)
-	print '22222222'
 	response = s.recv(10000)
 
 	print response
