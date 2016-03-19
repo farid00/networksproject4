@@ -47,6 +47,7 @@ def recvall(length_left, my_socket):
 			return response
 
 def compile_response(response, s):
+	print response
 	if response.find('chunked') > 0:
 		print response
 		current_response = response
@@ -208,9 +209,10 @@ def main():
 		handle_response(http_response)
 		print http_response
 
-		while sc == '500':
+		if sc == '500':
 			print '###########'
-
+			s = socket.socket()
+			s.connect(("fring.ccs.neu.edu", 80))
 			http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s)
 			sc = get_status_code(http_response)
 			handle_response(http_response)
