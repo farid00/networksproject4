@@ -40,35 +40,43 @@ def recvall(length_left, my_socket):
 		if length_left > 0:
 			new_response = my_socket.recv(length_left)
 			length_left = length_left - len(new_response)
-			print str(len(new_response)) + ' new length'
-			print str(length_left) + ' length left'
 			response += new_response
 		else:
 			return response
 
 def compile_response(response, s):
-	print response
+	print "$$$$$$$$$$$$$$$$$$$$$$$$"
+	print repr(response)
+	print "$$$$$$$$$$$$$$$$$$$$$$$$$"
 	if response.find('chunked') > 0:
-		print response
 		current_response = response
 		reassembled_response = ""
 		while True:
 			#is this the first packet?
+
 			if current_response.find('Content-Type') > 0:
 				m = re.search(r"(?<=\r\n\r\n)[0-9A-Fa-f]*(?=\r\n)", current_response)
 			else:
-				print repr(current_response)
 				m = re.search(r"[0-9A-Fa-f]*(?=\r\n)", current_response)
 			if int(m.group(0), 16) == 0:
 				return reassembled_response
 			#add 2 because of the final carriage return and line return on chunk
-			chunk_length = int(m.group(0), 16) + 2
+			chunk_length = int(m.group(0), 16)
 			#split on the clrf number
 			body_response = response.split(m.group(0) + '\r\n')[1]
 			length_left = chunk_length - len(body_response)
+			if length_left > 0:
+				length_left += 2
+			if length_left < -2:
+				return body_response
 			new_response = recvall(length_left, s)
 			body_response += new_response
-
+			print '**********************'
+			print str(chunk_length)
+			print str(len(body_response))
+			print length_left
+			print repr(current_response)
+			print '**********************'
 			reassembled_response += body_response
 			current_response = s.recv(4096)
 	else:
@@ -126,6 +134,8 @@ def make_cookie_string(cookie_dictionary):
 
 	return myCS[:-1]
 
+def get_status_code(response):
+	return response.split()[1]
 
 def make_get_request(url_to_get, cookie_string, sock):
 	request_string = """
@@ -140,6 +150,7 @@ def make_get_request(url_to_get, cookie_string, sock):
 	sock.sendall(request_string)
 
 	response = sock.recv(4096)
+	status_code = get_status_code(response)
 	# if not response:
 	# 	print "WTF IS GOING ON"
 	# 	return
@@ -147,10 +158,8 @@ def make_get_request(url_to_get, cookie_string, sock):
 
 	# response_code = response.split()[1]
 	response = compile_response(response, sock)
-	return response
+	return (response, status_code)
 
-def get_status_code(response):
-	return response.split()[1]
 
 def handle_response(response):
 	statuscode = response.split()[1]
@@ -191,8 +200,9 @@ def main():
 	compile_response(response, s)
 	cookies = parse_cookies(response)
 	cookie_string = make_cookie_string(cookies)
-	resp = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
+	resp, statuscode = make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string, sock=s)
 	parser.feed(resp)
+	is_closed = False
 
 
 
@@ -204,17 +214,17 @@ def main():
 		print NextUrl
 
         #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
-		http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s)
-		sc = get_status_code(http_response)
+		(http_response, sc) = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s)
+		if http_response.find("Connection: close") > -1:
+			is_closed = True
 		handle_response(http_response)
 		print http_response
 
-		if sc == '500':
-			print '###########'
+		if int(sc) == 500:
+			print '############################'
 			s = socket.socket()
 			s.connect(("fring.ccs.neu.edu", 80))
-			http_response = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s)
-			sc = get_status_code(http_response)
+			(http_response, sc) = make_get_request(url_to_get=NextUrl, cookie_string=cookie_string, sock=s)
 			handle_response(http_response)
 
 		# print http_response
@@ -223,7 +233,10 @@ def main():
 
 		if http_response:
 			parser.feed(http_response)
-		
+		if is_closed:
+			s = socket.socket()
+			s.connect(("fring.ccs.neu.edu", 80))
+			is_closed = False
 
 	if FLAGS:
 		print "FLAGS:"
