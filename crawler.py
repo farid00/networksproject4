@@ -45,9 +45,9 @@ def recvall(length_left, my_socket):
 			return response
 
 def compile_response(response, s):
-	print "$$$$$$$$$$$$$$$$$$$$$$$$"
-	print repr(response)
-	print "$$$$$$$$$$$$$$$$$$$$$$$$$"
+	# print "$$$$$$$$$$$$$$$$$$$$$$$$"
+	# print repr(response)
+	# print "$$$$$$$$$$$$$$$$$$$$$$$$$"
 	if response.find('chunked') > 0:
 		current_response = response
 		reassembled_response = ""
@@ -71,12 +71,12 @@ def compile_response(response, s):
 				return body_response
 			new_response = recvall(length_left, s)
 			body_response += new_response
-			print '**********************'
-			print str(chunk_length)
-			print str(len(body_response))
-			print length_left
-			print repr(current_response)
-			print '**********************'
+			# print '**********************'
+			# print str(chunk_length)
+			# print str(len(body_response))
+			# print length_left
+			# print repr(current_response)
+			# print '**********************'
 			reassembled_response += body_response
 			current_response = s.recv(4096)
 	else:
@@ -103,11 +103,12 @@ def parse_cookies(response):
 
 def make_login_string(cookie_string, csrfmiddlewaretoken):
 	# Isaac's credentials 
-	# UN: 001939560
-	# PW: 66H5YT05
+	username = "001939560"
+	password = "66H5YT05"
 
-	username = "001968841"
-	password = "LG56YYQK"
+	# Matt's credentials
+	# username = "001968841"
+	# password = "LG56YYQK"
 	login_string = """
 					POST /accounts/login/ HTTP/1.1
 					Host: fring.ccs.neu.edu
@@ -179,7 +180,8 @@ def handle_response(response):
 		pass
 	elif statuscode in range(500,600):
 		# Server Error
-		print '##########'
+		# print '##########'
+		pass
 
 
 
@@ -218,7 +220,7 @@ def main():
 		if http_response.find("Connection: close") > -1:
 			is_closed = True
 		handle_response(http_response)
-		print http_response
+		# print http_response
 
 		if int(sc) == 500:
 			print '############################'
