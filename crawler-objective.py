@@ -29,42 +29,8 @@ class linkParser(HTMLParser):
 
     def handle_data(self, data):
             if 'FLAG' in data:
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
-                print "!!!!!!!!!!!!!!"
+                for a in range (0, 30):
+                    print "!!!!!!!!!!!!!!"
                 self.Flags.append(data.split("FLAG: ", 1)[1])
 
 
@@ -108,13 +74,12 @@ class WebCrawler():
 
         while self.LinksToVisit:
             NextUrl = self.LinksToVisit[0]
-            print NextUrl
+            print NextUrl +  "      {}".format(len(self.LinksToVisit))
 
             #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
             (http_response, sc) = self.make_get_request(url_to_get=NextUrl, cookie_string=cookie_string)
             if http_response.find("Connection: close") > -1:
                 is_closed = True
-
 
             # should this be a while? if it 500's more than once shouldnt we keep trying?
             if int(sc) == 500:
@@ -125,7 +90,7 @@ class WebCrawler():
                 # TODO: this is a kind of wonky algorithm but it works
                 redirecturl = http_response.split("Location: ",1)[1].split()[0]
                 if redirecturl not in self.LinksVisitted and redirecturl not in self.LinksToVisit:
-                    self.LinksToVisit.insert(0, redirecturl)
+                    self.LinksToVisit.insert(1, redirecturl)
             elif int(sc) == 403:
                 print '403 error, abandoning url'
 
@@ -140,12 +105,7 @@ class WebCrawler():
                 self.sock.connect(("fring.ccs.neu.edu", 80))
                 is_closed = False
 
-        if self.FLAGS:
-            print "FLAGS:"
-            for flag in self.FLAGS:
-                print flag
-        else:
-            print 'NO FLAGS FOUND'
+        self.print_flags()
 
 
     #Parse out the cookies from the HTTP response
@@ -259,7 +219,8 @@ class WebCrawler():
         request_string = textwrap.dedent(request_string.format(url_to_get, cookie_string))
         self.sock.sendall(request_string)
 
-        response = self.sock.recv(4096)
+        # TODO: try except maybe to handle connection reset by peer
+        response = self.sock.recv(4096) 
         status_code = self.get_status_code(response)
 
         response = self.compile_response(response)
@@ -267,6 +228,14 @@ class WebCrawler():
 
     def get_status_code(self, response):
         return response.split()[1]
+
+    def print_flags(self):
+        if self.FLAGS:
+            print "FLAGS:"
+            for flag in self.Flags:
+                print flag
+        else:
+            print 'NO FLAGS FOUND'
 
 
 def main():
@@ -287,3 +256,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# TODO:
+# errors I've seen:
+# csrf at start
+# Conection reset by peer
+# out of bounds when trying to get status code
