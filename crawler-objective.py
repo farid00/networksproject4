@@ -28,20 +28,20 @@ class linkParser(HTMLParser):
                             self.LinksToVisit.append(value)
 
     def handle_data(self, data):
-            # <h2 class='secret_flag' style="color:red">FLAG: 64-characters-of-random-alphanumerics</h2>
             if 'FLAG' in data:
                 print "!!!!!!!!!!!!!!"
                 self.Flags.append(data.split("FLAG: ", 1)[1])
-            # it may be better to only do the check in an h2 tag but handle_starttag doesnt have any data in it so idk
 
 
 
 class WebCrawler():
-    def __init__(self):
+    def __init__(self, username, password):
         # these can probably be sets
         self.LinksToVisit = []
         self.LinksVisitted = []
         self.Flags = []
+        self.username = username
+        self.password = password
 
 
         self.parser = linkParser(LinksToVisit=self.LinksToVisit, LinksVisitted=self.LinksVisitted, Flags=self.Flags)
@@ -58,7 +58,7 @@ class WebCrawler():
         login_string = self.make_login_string(cookie_string, cookies['csrftoken'])
         self.sock.send(login_string)
         response = self.sock.recv(4096)
-        # ???????
+        # TODO: ??????? should this return something? below
         self.compile_response(response)
         cookies = self.parse_cookies(response)
         cookie_string = self.make_cookie_string(cookies)
@@ -79,15 +79,20 @@ class WebCrawler():
             (http_response, sc) = self.make_get_request(url_to_get=NextUrl, cookie_string=cookie_string)
             if http_response.find("Connection: close") > -1:
                 is_closed = True
-            self.handle_response(http_response)
-            # print http_response
 
+
+            # should this be a while? if it 500's more than once shouldnt we keep trying?
             if int(sc) == 500:
-                print '############################'
                 self.sock = socket.socket()
                 self.sock.connect(("fring.ccs.neu.edu", 80))
                 (http_response, sc) = self.make_get_request(url_to_get=NextUrl, cookie_string=cookie_string)
-                self.handle_response(http_response)
+            elif int(sc) == 301:
+                # TODO: this is a kind of wonky algorithm but it works
+                redirecturl = http_response.split("Location: ",1)[1].split()[0]
+                if redirecturl not in self.LinksVisitted and redirecturl not in self.LinksToVisit:
+                    self.LinksToVisit.insert(0, redirecturl)
+            elif int(sc) == 403:
+                print '403 error, abandoning url'
 
             # print http_response
             self.LinksVisitted.append(NextUrl)
@@ -100,9 +105,9 @@ class WebCrawler():
                 self.sock.connect(("fring.ccs.neu.edu", 80))
                 is_closed = False
 
-        if FLAGS:
+        if self.FLAGS:
             print "FLAGS:"
-            for flag in FLAGS:
+            for flag in self.FLAGS:
                 print flag
         else:
             print 'NO FLAGS FOUND'
@@ -116,8 +121,8 @@ class WebCrawler():
             if length_left > 0:
                 new_response = self.sock.recv(length_left)
                 length_left = length_left - len(new_response)
-                print str(len(new_response)) + ' new length'
-                print str(length_left) + ' length left'
+                # print str(len(new_response)) + ' new length'
+                # print str(length_left) + ' length left'
                 response += new_response
             else:
                 return response
@@ -180,12 +185,6 @@ class WebCrawler():
         return cookie_dictionary
 
     def make_login_string(self, cookie_string, csrfmiddlewaretoken):
-        # Isaac's credentials 
-        # UN: 001939560
-        # PW: 66H5YT05
-
-        username = "001968841"
-        password = "LG56YYQK"
         login_string = """
                         POST /accounts/login/ HTTP/1.1
                         Host: fring.ccs.neu.edu
@@ -199,7 +198,7 @@ class WebCrawler():
 
                         """
 
-        login_string = login_string.format(cookie_string, username, password, csrfmiddlewaretoken)
+        login_string = login_string.format(cookie_string, self.username, self.password, csrfmiddlewaretoken)
         return textwrap.dedent(login_string)
 
 
@@ -234,29 +233,18 @@ class WebCrawler():
     def get_status_code(self, response):
         return response.split()[1]
 
-    def handle_response(self, response):
-        statuscode = response.split()[1]
-        print statuscode
-
-        if statuscode in range (0, 200):
-            # informational
-            pass
-        elif statuscode in range(200, 300):
-            # success
-            pass
-        elif statuscode in range(300,400):
-            # Redirection
-            pass
-        elif statuscode in range(400, 500):
-            # Client Error
-            pass
-        elif statuscode in range(500,600):
-            # Server Error
-            print '##########'
-
 
 def main():
-    crawler = WebCrawler()
+    #TODO: login with command line args
+
+    # Isaac's credentials 
+    username = "001939560"
+    password = "66H5YT05"
+
+    # Matt's credientials
+    # username = "001968841"
+    # password = "LG56YYQK"
+    crawler = WebCrawler(username=username, password=password)
     crawler.crawl()
 
     
