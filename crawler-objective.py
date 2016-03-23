@@ -74,7 +74,7 @@ class WebCrawler():
 
         while self.LinksToVisit:
             NextUrl = self.LinksToVisit[0]
-            print NextUrl +  "      {}".format(len(self.LinksToVisit))
+            print "{} {} {}".format(NextUrl.ljust(40), str(len(self.LinksToVisit)).ljust(40), str(len(self.LinksVisitted)).ljust(40))
 
             #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
             (http_response, sc) = self.make_get_request(url_to_get=NextUrl, cookie_string=cookie_string)
@@ -230,7 +230,7 @@ class WebCrawler():
         return response.split()[1]
 
     def print_flags(self):
-        if self.FLAGS:
+        if self.Flags:
             print "FLAGS:"
             for flag in self.Flags:
                 print flag
