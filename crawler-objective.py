@@ -50,17 +50,19 @@ class WebCrawler():
         self.sock.connect(("fring.ccs.neu.edu", 80))
 
     def crawl(self):
+        cookies = {}
+
         home_page = "GET /accounts/login/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
-        self.sock.send(home_page)
-        response = self.sock.recv(4096)
-        response = self.compile_response(response)
-        cookies = self.parse_cookies(response)
-        cookie_string = self.make_cookie_string(cookies)
-        login_string = self.make_login_string(cookie_string, cookies['csrftoken'])
+        while not cookies.get('csrftoken'):
+            self.sock.send(home_page)
+            response = self.sock.recv(4096)
+            response = self.compile_response(response)
+            cookies = self.parse_cookies(response)
+            cookie_string = self.make_cookie_string(cookies)
+
+        login_string = self.make_login_string(cookie_string, cookies.get('csrftoken'))
         self.sock.send(login_string)
         response = self.sock.recv(4096)
-        # TODO: ??????? should this return something? below
-        self.compile_response(response)
         cookies = self.parse_cookies(response)
         cookie_string = self.make_cookie_string(cookies)
         resp, statuscode = self.make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string)
