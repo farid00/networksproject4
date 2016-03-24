@@ -55,14 +55,14 @@ class WebCrawler():
         home_page = "GET /accounts/login/ HTTP/1.1\r\nHost: fring.ccs.neu.edu\r\n\r\n"
         while not cookies.get('csrftoken'):
             self.sock.send(home_page)
-            response = self.sock.recv(4096)
+            response = self.safe_recv(4096)
             response = self.compile_response(response)
             cookies = self.parse_cookies(response)
             cookie_string = self.make_cookie_string(cookies)
 
         login_string = self.make_login_string(cookie_string, cookies.get('csrftoken'))
         self.sock.send(login_string)
-        response = self.sock.recv(4096)
+        response = self.safe_recv(4096)
         cookies = self.parse_cookies(response)
         cookie_string = self.make_cookie_string(cookies)
         resp, statuscode = self.make_get_request(url_to_get='/fakebook/', cookie_string=cookie_string)
@@ -96,7 +96,6 @@ class WebCrawler():
             elif int(sc) == 403:
                 print '403 error, abandoning url'
 
-            # print http_response
             self.LinksVisitted.append(NextUrl)
             self.LinksToVisit.pop(0)
 
@@ -142,7 +141,7 @@ class WebCrawler():
                     return reassembled_response
                 #add 2 because of the final carriage return and line return on chunk
                 chunk_length = int(m.group(0), 16)
-                #split on the clrf number
+                #split on the csrf number
                 body_response = response.split(m.group(0) + '\r\n')[1]
                 length_left = chunk_length - len(body_response)
                 if length_left > 0:
@@ -158,7 +157,7 @@ class WebCrawler():
                 # print repr(current_response)
                 # print '**********************'
                 reassembled_response += body_response
-                current_response = self.sock.recv(4096)
+                current_response = self.safe_recv(4096)
         else:
             response = response
             total_length = re.search(r"(?<=Content-Length: )\d+", response)
@@ -221,8 +220,7 @@ class WebCrawler():
         request_string = textwrap.dedent(request_string.format(url_to_get, cookie_string))
         self.sock.sendall(request_string)
 
-        # TODO: try except maybe to handle connection reset by peer
-        response = self.sock.recv(4096) 
+        response = self.safe_recv(4096) 
         status_code = self.get_status_code(response)
 
         response = self.compile_response(response)
@@ -239,10 +237,18 @@ class WebCrawler():
         else:
             print 'NO FLAGS FOUND'
 
+    def safe_recv(self, length):
+        try:
+            return self.sock.recv(4096)
+        except Exception as e:
+            # TODO: does this make sense? also check lack of use in recvall method im not sure it will work there.
+            print 'connection reset by peer error'
+            for a in range(0,30):
+                print '&&&&&&&&&&&&'
+            self.sock = socket.socket()
+
 
 def main(argv):
-    #TODO: login with command line args
-
     if len(argv) >= 2:
         username = argv[0]
         password = argv[1]
@@ -270,6 +276,5 @@ if __name__ == "__main__":
 
 
 # TODO:
-# errors left:
-# Conection reset by peer -- very hard to reproduce
+# last big error
 # out of bounds when trying to get status code
