@@ -240,16 +240,25 @@ class WebCrawler():
             print 'NO FLAGS FOUND'
 
 
-def main():
+def main(argv):
     #TODO: login with command line args
 
-    # Isaac's credentials 
-    username = "001939560"
-    password = "66H5YT05"
+    if len(argv) >= 2:
+        username = argv[0]
+        password = argv[1]
+    if len(argv) == 1:
+        print 'error: incorrect number of arguments'
+    else:
 
-    # Matt's credientials
-    # username = "001968841"
-    # password = "LG56YYQK"
+        # Isaac's credentials 
+        username = "001939560"
+        password = "66H5YT05"
+
+        # Matt's credientials
+        # username = "001968841"
+        # password = "LG56YYQK"
+
+
     crawler = WebCrawler(username=username, password=password)
     crawler.crawl()
 
@@ -257,11 +266,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
 
 
 # TODO:
-# errors I've seen:
-# csrf at start
-# Conection reset by peer
+# errors left:
+# Conection reset by peer -- very hard to reproduce
 # out of bounds when trying to get status code
