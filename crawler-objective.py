@@ -9,7 +9,7 @@ import time
 import binascii
 import Queue
 import threading
-
+Flags = []
 class linkParser(HTMLParser):
     def __init__(self, LinksToVisit, LinksVisitted, Flags):
         self.LinksToVisit = LinksToVisit
@@ -30,10 +30,11 @@ class linkParser(HTMLParser):
                             self.LinksToVisit.put(value)
 
     def handle_data(self, data):
-            if 'FLAG' in data:
-                for a in range (0, 30):
-                    print "!!!!!!!!!!!!!!"
-                self.Flags.append(data.split("FLAG: ", 1)[1])
+        global Flags
+        if 'FLAG' in data:
+            for a in range (0, 30):
+                print "!!!!!!!!!!!!!!"
+            Flags.append(data.split("FLAG: ", 1)[1])
 
 
 
@@ -107,8 +108,6 @@ class WebCrawler():
                 self.sock.connect(("fring.ccs.neu.edu", 80))
                 is_closed = False
 
-        self.print_flags()
-
 
     #Parse out the cookies from the HTTP response
     def recvall(self, length_left):
@@ -132,7 +131,6 @@ class WebCrawler():
             current_response = response
             reassembled_response = ""
             while True:
-                print repr(current_response)
                 # if current_response.find('Content-Type') > 0:
                 #     m = re.search(r"(?<=\r\n\r\n)[0-9A-Fa-f]*(?=\r\n)", current_response)
                 # else:
@@ -235,6 +233,14 @@ class WebCrawler():
             self.sock = socket.socket()
 
 
+def print_flags():
+    global Flags
+    if Flags:
+        print "FLAGS:"
+        for flag in Flags:
+            print flag
+    else:
+        print 'NO FLAGS FOUND'
 def main(argv):
     LinksToVisit = Queue.Queue()
     LinksVisitted = Queue.Queue()
@@ -252,11 +258,23 @@ def main(argv):
         # Matt's credientials
         # username = "001968841"
         # password = "LG56YYQK"
-
-    for num in range(1, 20):
         crawler = WebCrawler(username=username, password=password, LinksVisitted = LinksVisitted, LinksToVisit=LinksToVisit)
+        crawler2 = WebCrawler(username=username, password=password, LinksVisitted = LinksVisitted, LinksToVisit=LinksToVisit)
+        crawler3 = WebCrawler(username=username, password=password, LinksVisitted = LinksVisitted, LinksToVisit=LinksToVisit)
+        crawler4 = WebCrawler(username=username, password=password, LinksVisitted = LinksVisitted, LinksToVisit=LinksToVisit)
         t1 = threading.Thread(target=crawler.crawl, args=[])
+        t2 = threading.Thread(target=crawler2.crawl, args=[])
+        t3 = threading.Thread(target=crawler3.crawl, args=[])
+        t4 = threading.Thread(target=crawler4.crawl, args=[])
         t1.start()
+        t2.start()
+        t3.start()
+        t4.start()
+        t1.join()
+        t2.join()
+        t3.join()
+        t4.join()
+        print_flags()
 
 if __name__ == "__main__":
     main(sys.argv[1:])
