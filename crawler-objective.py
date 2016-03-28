@@ -7,6 +7,8 @@ from HTMLParser import HTMLParser
 import re
 import time
 import binascii
+import Queue
+import threading
 
 class linkParser(HTMLParser):
     def __init__(self, LinksToVisit, LinksVisitted, Flags):
@@ -24,8 +26,8 @@ class linkParser(HTMLParser):
                     url = urlparse(value)
                     # domain in case its an absolute url thats probably still fine
                     if not url.scheme or url.scheme == 'fring.ccs.neu.edu':
-                        if value not in self.LinksVisitted and value not in self.LinksToVisit:
-                            self.LinksToVisit.append(value)
+                        if value not in self.LinksVisitted and value not in self.LinksToVisit.queue:
+                            self.LinksToVisit.put(value)
 
     def handle_data(self, data):
             if 'FLAG' in data:
@@ -36,13 +38,13 @@ class linkParser(HTMLParser):
 
 
 class WebCrawler():
-    def __init__(self, username, password):
+    def __init__(self, username, password, LinksToVisit):
         # these can probably be sets
-        self.LinksToVisit = []
         self.LinksVisitted = []
         self.Flags = []
         self.username = username
         self.password = password
+        self.LinksToVisit = LinksToVisit
 
 
         self.parser = linkParser(LinksToVisit=self.LinksToVisit, LinksVisitted=self.LinksVisitted, Flags=self.Flags)
@@ -74,9 +76,9 @@ class WebCrawler():
         if not self.LinksToVisit:
             print 'NO LINKS AT START COULD NOT CRAWL'
 
-        while self.LinksToVisit:
-            NextUrl = self.LinksToVisit[0]
-            print "{} {} {}".format(NextUrl.ljust(40), str(len(self.LinksToVisit)).ljust(40), str(len(self.LinksVisitted)).ljust(40))
+        while not self.LinksToVisit.empty():
+            NextUrl = str(self.LinksToVisit.get(0))
+            print "{} {} {}".format(NextUrl.ljust(40), str(self.LinksToVisit.qsize()).ljust(40), str(len(self.LinksVisitted)).ljust(40))
 
             #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
             (http_response, sc) = self.make_get_request(url_to_get=NextUrl, cookie_string=cookie_string)
@@ -92,12 +94,11 @@ class WebCrawler():
                 # TODO: this is a kind of wonky algorithm but it works
                 redirecturl = http_response.split("Location: ",1)[1].split()[0]
                 if redirecturl not in self.LinksVisitted and redirecturl not in self.LinksToVisit:
-                    self.LinksToVisit.insert(1, redirecturl)
+                    self.LinksToVisit.insert(redirecturl)
             elif int(sc) == 403:
                 print '403 error, abandoning url'
 
             self.LinksVisitted.append(NextUrl)
-            self.LinksToVisit.pop(0)
 
             if http_response:
                 self.parser.feed(http_response)
@@ -135,7 +136,7 @@ class WebCrawler():
                 # if current_response.find('Content-Type') > 0:
                 #     m = re.search(r"(?<=\r\n\r\n)[0-9A-Fa-f]*(?=\r\n)", current_response)
                 # else:
-                m = re.findall(r"(?<=\r\n)[0-9A-Fa-f]{3}|[0-9A-Fa-f]{1}(?=\r\n)", current_response)
+                m = re.findall(r"(?<=\r\n)[0-9A-Fa-f]{3}(?=\r\n)|[0-9A-Fa-f]{1}(?=\r\n\r\n)", current_response)
                 print m
                 if '0' in m:
                     return reassembled_response
@@ -235,6 +236,7 @@ class WebCrawler():
 
 
 def main(argv):
+    LinksToVisit = Queue.Queue()
     if len(argv) >= 2:
         username = argv[0]
         password = argv[1]
@@ -250,12 +252,15 @@ def main(argv):
         # username = "001968841"
         # password = "LG56YYQK"
 
-
-    crawler = WebCrawler(username=username, password=password)
-    crawler.crawl()
-
-    
-
+    crawler = WebCrawler(username=username, password=password, LinksToVisit=LinksToVisit)
+    crawler2 = WebCrawler(username=username, password=password, LinksToVisit=LinksToVisit)
+    crawler3 = WebCrawler(username=username, password=password, LinksToVisit=LinksToVisit)
+    t1 = threading.Thread(target=crawler.crawl, args=[])
+    t2 = threading.Thread(target=crawler2.crawl, args=[])
+    t3 = threading.Thread(target=crawler3.crawl, args=[])
+    t1.start()
+    t2.start()
+    t3.start()
 
 if __name__ == "__main__":
     main(sys.argv[1:])
