@@ -115,7 +115,7 @@ class WebCrawler():
         response = ""
         while True:
             if length_left > 0:
-                new_response = self.sock.recv(length_left)
+                new_response = self.safe_recv(length_left)
                 length_left = length_left - len(new_response)
                 # print str(len(new_response)) + ' new length'
                 # print str(length_left) + ' length left'
@@ -132,13 +132,15 @@ class WebCrawler():
             reassembled_response = ""
             while True:
                 #is this the first packet?
-
+                if current_response == "":
+                    current_response = self.safe_recv(4096)
+                    continue
                 if current_response.find('Content-Type') > 0:
                     m = re.search(r"(?<=\r\n\r\n)[0-9A-Fa-f]*(?=\r\n)", current_response)
                 else:
                     m = re.search(r"[0-9A-Fa-f]*(?=\r\n)", current_response)
                 if int(m.group(0), 16) == 0:
-                    return reassembled_response
+                        return reassembled_response
                 #add 2 because of the final carriage return and line return on chunk
                 chunk_length = int(m.group(0), 16)
                 #split on the csrf number
@@ -184,7 +186,7 @@ class WebCrawler():
         login_string = """
                         POST /accounts/login/ HTTP/1.1
                         Host: fring.ccs.neu.edu
-                        Referer: http://fring.ccs.neu.edu/accounts/login/?next=/fakebook/b
+                        Referer: http://fring.ccs.neu.edu/accounts/login/?next=/fakebook/
                         Content-Type: application/x-www-form-urlencoded
                         Content-Length: 95
                         Origin: http://fring.ccs.neu.edu
@@ -215,7 +217,7 @@ class WebCrawler():
                     Pragma: no-cache
                     Cache-Control: no-cache
                     Cookie: {}
-
+                    
                     """
         request_string = textwrap.dedent(request_string.format(url_to_get, cookie_string))
         self.sock.sendall(request_string)
@@ -239,7 +241,7 @@ class WebCrawler():
 
     def safe_recv(self, length):
         try:
-            return self.sock.recv(4096)
+            return self.sock.recv(length)
         except Exception as e:
             # TODO: does this make sense? also check lack of use in recvall method im not sure it will work there.
             print 'connection reset by peer error'
