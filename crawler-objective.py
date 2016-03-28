@@ -26,7 +26,7 @@ class linkParser(HTMLParser):
                     url = urlparse(value)
                     # domain in case its an absolute url thats probably still fine
                     if not url.scheme or url.scheme == 'fring.ccs.neu.edu':
-                        if value not in self.LinksVisitted and value not in self.LinksToVisit.queue:
+                        if value not in self.LinksVisitted.queue and value not in self.LinksToVisit.queue:
                             self.LinksToVisit.put(value)
 
     def handle_data(self, data):
@@ -38,9 +38,9 @@ class linkParser(HTMLParser):
 
 
 class WebCrawler():
-    def __init__(self, username, password, LinksToVisit):
+    def __init__(self, username, password, LinksVisitted, LinksToVisit):
         # these can probably be sets
-        self.LinksVisitted = []
+        self.LinksVisitted = LinksVisitted
         self.Flags = []
         self.username = username
         self.password = password
@@ -78,7 +78,7 @@ class WebCrawler():
 
         while not self.LinksToVisit.empty():
             NextUrl = str(self.LinksToVisit.get(0))
-            print "{} {} {}".format(NextUrl.ljust(40), str(self.LinksToVisit.qsize()).ljust(40), str(len(self.LinksVisitted)).ljust(40))
+            print "{} {} {}".format(NextUrl.ljust(40), str(self.LinksToVisit.qsize()).ljust(40), str(self.LinksVisitted.qsize()).ljust(40))
 
             #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
             (http_response, sc) = self.make_get_request(url_to_get=NextUrl, cookie_string=cookie_string)
@@ -93,12 +93,12 @@ class WebCrawler():
             elif int(sc) == 301:
                 # TODO: this is a kind of wonky algorithm but it works
                 redirecturl = http_response.split("Location: ",1)[1].split()[0]
-                if redirecturl not in self.LinksVisitted and redirecturl not in self.LinksToVisit:
+                if redirecturl not in self.LinksVisitted.queue and redirecturl not in self.LinksToVisit:
                     self.LinksToVisit.insert(redirecturl)
             elif int(sc) == 403:
                 print '403 error, abandoning url'
 
-            self.LinksVisitted.append(NextUrl)
+            self.LinksVisitted.put(NextUrl)
 
             if http_response:
                 self.parser.feed(http_response)
@@ -237,6 +237,7 @@ class WebCrawler():
 
 def main(argv):
     LinksToVisit = Queue.Queue()
+    LinksVisitted = Queue.Queue()
     if len(argv) >= 2:
         username = argv[0]
         password = argv[1]
@@ -252,15 +253,10 @@ def main(argv):
         # username = "001968841"
         # password = "LG56YYQK"
 
-    crawler = WebCrawler(username=username, password=password, LinksToVisit=LinksToVisit)
-    crawler2 = WebCrawler(username=username, password=password, LinksToVisit=LinksToVisit)
-    crawler3 = WebCrawler(username=username, password=password, LinksToVisit=LinksToVisit)
-    t1 = threading.Thread(target=crawler.crawl, args=[])
-    t2 = threading.Thread(target=crawler2.crawl, args=[])
-    t3 = threading.Thread(target=crawler3.crawl, args=[])
-    t1.start()
-    t2.start()
-    t3.start()
+    for num in range(1, 20):
+        crawler = WebCrawler(username=username, password=password, LinksVisitted = LinksVisitted, LinksToVisit=LinksToVisit)
+        t1 = threading.Thread(target=crawler.crawl, args=[])
+        t1.start()
 
 if __name__ == "__main__":
     main(sys.argv[1:])
