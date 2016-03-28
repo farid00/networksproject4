@@ -131,33 +131,17 @@ class WebCrawler():
             current_response = response
             reassembled_response = ""
             while True:
-                #is this the first packet?
-                if current_response == "":
-                    current_response = self.safe_recv(4096)
-                    continue
-                if current_response.find('Content-Type') > 0:
-                    m = re.search(r"(?<=\r\n\r\n)[0-9A-Fa-f]*(?=\r\n)", current_response)
-                else:
-                    m = re.search(r"[0-9A-Fa-f]*(?=\r\n)", current_response)
-                if int(m.group(0), 16) == 0:
-                        return reassembled_response
+                print repr(current_response)
+                # if current_response.find('Content-Type') > 0:
+                #     m = re.search(r"(?<=\r\n\r\n)[0-9A-Fa-f]*(?=\r\n)", current_response)
+                # else:
+                m = re.findall(r"(?<=\r\n)[0-9A-Fa-f]{3}|[0-9A-Fa-f]{1}(?=\r\n)", current_response)
+                print m
+                if '0' in m:
+                    return reassembled_response
                 #add 2 because of the final carriage return and line return on chunk
-                chunk_length = int(m.group(0), 16)
                 #split on the csrf number
-                body_response = response.split(m.group(0) + '\r\n')[1]
-                length_left = chunk_length - len(body_response)
-                if length_left > 0:
-                    length_left += 2
-                if length_left < -2:
-                    return body_response
-                new_response = self.recvall(length_left)
-                body_response += new_response
-                # print '**********************'
-                # print str(chunk_length)
-                # print str(len(body_response))
-                # print length_left
-                # print repr(current_response)
-                # print '**********************'
+                body_response = re.sub(r"(\r\n[0-9A-Fa-f]{3}\r\n)", '', current_response)
                 reassembled_response += body_response
                 current_response = self.safe_recv(4096)
         else:
