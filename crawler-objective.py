@@ -48,8 +48,6 @@ class linkParser(HTMLParser):
     def handle_data(self, data):
         global Flags
         if 'FLAG' in data:
-            for a in range (0, 30):
-                print "!!!!!!!!!!!!!!"
             Flags.append(data.split("FLAG: ", 1)[1])
 
 
@@ -100,7 +98,7 @@ class WebCrawler():
                 NextUrl = str(self.LinksToVisit.get(0))
             except:
                 continue
-            print "*****{} {} {}*****".format(NextUrl.ljust(40), str(self.LinksToVisit.qsize()).ljust(40), str(self.LinksVisitted.qsize()).ljust(40))
+            # print "{} {} {}".format(NextUrl.ljust(40), str(self.LinksToVisit.qsize()).ljust(40), str(self.LinksVisitted.qsize()).ljust(40))
 
             #cookie string shouldnt change except maybe the csrf will but idk if thats neccesary
             (http_response, sc) = self.make_get_request(url_to_get=NextUrl, cookie_string=cookie_string)
@@ -141,16 +139,11 @@ class WebCrawler():
             if length_left > 0:
                 new_response = self.safe_recv(4096)
                 length_left = length_left - len(new_response)
-                # print str(len(new_response)) + ' new length'
-                # print str(length_left) + ' length left'
                 response += new_response
             else:
                 return response
 
     def compile_response(self, response):
-        # print "$$$$$$$$$$$$$$$$$$$$$$$$"
-        # print repr(response)
-        # print "$$$$$$$$$$$$$$$$$$$$$$$$$"
         if response.find('chunked') > 0:
 
             current_response = response
@@ -240,7 +233,6 @@ class WebCrawler():
 
     def print_flags(self):
         if self.Flags:
-            print "FLAGS:"
             for flag in self.Flags:
                 print flag
         else:
@@ -251,17 +243,13 @@ class WebCrawler():
             read, write, other = select.select([self.sock], [], [])
             return read[0].recv(length)
         except Exception as e:
-            # TODO: does this make sense? also check lack of use in recvall method im not sure it will work there.
-            print 'connection reset by peer error'
-            for a in range(0,30):
-                print '&&&&&&&&&&&&'
+            # print 'connection reset by peer error'
             self.sock = socket.socket()
 
 
 def print_flags():
     global Flags
     if Flags:
-        print "FLAGS:"
         for flag in Flags:
             print flag
     else:
@@ -319,8 +307,3 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
-
-# TODO:
-# last big error
-# out of bounds when trying to get status code
